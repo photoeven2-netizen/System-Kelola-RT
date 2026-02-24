@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "tsc && vite build",
+    "start": "node server.ts",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },
@@ -17,11 +18,11 @@
     "express": "^5.2.1",
     "googleapis": "^171.4.0",
     "jspdf": "^2.5.1",
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.575.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
-    "recharts": "^2.12.2",
+    "recharts": "^3.7.0",
     "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.2.1",
     "tsx": "^4.21.0"
