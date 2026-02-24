@@ -203,10 +203,20 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
                 <div className="p-2 bg-amber-50 text-amber-600 rounded-lg"><ImageIcon size={20} /></div>
                 <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Visual & Branding</h3>
               </div>
-              <button onClick={handleResetBranding} className="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center space-x-1">
-                <RotateCcw size={12} />
-                <span>RESET DEFAULT</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                <button onClick={handleResetBranding} className="text-[10px] font-bold text-slate-400 hover:text-red-500 flex items-center space-x-1">
+                  <RotateCcw size={12} />
+                  <span>RESET DEFAULT</span>
+                </button>
+                <button 
+                  onClick={handleSaveConfig} 
+                  disabled={isSavingConfig}
+                  className="px-6 py-2 bg-amber-600 text-white rounded-xl text-xs font-bold hover:bg-amber-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg shadow-amber-100"
+                >
+                  {isSavingConfig ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  <span>SIMPAN BRANDING</span>
+                </button>
+              </div>
             </div>
             <div className="p-6 space-y-6">
               <div className="flex flex-col sm:flex-row items-center gap-6">
