@@ -7,9 +7,10 @@ interface HeaderProps {
   user: AdminUser | null;
   onMenuClick: () => void;
   onAdminClick: () => void;
+  onLogout: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ user, onMenuClick, onAdminClick }) => {
+const Header: React.FC<HeaderProps> = ({ user, onMenuClick, onAdminClick, onLogout }) => {
   return (
     <header className="h-16 md:h-20 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 z-10 shrink-0">
       <div className="flex items-center space-x-4 flex-1">
@@ -40,14 +41,19 @@ const Header: React.FC<HeaderProps> = ({ user, onMenuClick, onAdminClick }) => {
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
             </button>
             
-            <div className="flex items-center space-x-2 md:space-x-3 md:pl-6 md:border-l md:border-slate-100">
+            <div className="flex items-center space-x-2 md:space-x-4 md:pl-6 md:border-l md:border-slate-100">
               <div className="hidden sm:block text-right">
                 <p className="text-xs md:text-sm font-bold text-slate-800 leading-none">{user.name}</p>
                 <p className="text-[10px] font-medium text-slate-400 mt-1 uppercase tracking-tight">{user.role}</p>
               </div>
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600 border border-blue-100 shrink-0">
-                <User size={18} />
-              </div>
+              <button 
+                onClick={onLogout}
+                className="w-8 h-8 md:w-10 md:h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600 border border-red-100 shrink-0 hover:bg-red-600 hover:text-white transition-all group"
+                title="Log Out"
+              >
+                <User size={18} className="group-hover:hidden" />
+                <ShieldCheck size={18} className="hidden group-hover:block" />
+              </button>
             </div>
           </>
         ) : (

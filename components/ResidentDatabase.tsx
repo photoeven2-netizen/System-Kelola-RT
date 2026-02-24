@@ -15,9 +15,10 @@ import {
   FileSpreadsheet,
   RotateCcw,
   User,
-  Users as UsersIcon
+  Users as UsersIcon,
+  ExternalLink
 } from 'lucide-react';
-import { AdminRole, Resident, MaritalStatus } from '../types';
+import { AdminRole, Resident, MaritalStatus, RTConfig } from '../types';
 
 interface ResidentDatabaseProps {
   residents: Resident[];
@@ -25,6 +26,8 @@ interface ResidentDatabaseProps {
   onEditResident: (res: Resident) => void;
   onDeleteResident: (nik: string) => void;
   userRole: AdminRole;
+  rtConfig: RTConfig;
+  setRtConfig: (config: RTConfig) => void;
 }
 
 const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({ 
@@ -32,7 +35,9 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
   onAddResident, 
   onEditResident, 
   onDeleteResident, 
-  userRole 
+  userRole,
+  rtConfig,
+  setRtConfig
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
@@ -42,8 +47,108 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
   
   const [isUploading, setIsUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Google Sheets Sync Logic
+  const handleGoogleSync = async () => {
+    if (residents.length === 0) {
+      alert('Tidak ada data warga untuk disinkronkan.');
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      
+      // 1. Get Auth URL
+      const response = await fetch('/api/auth/google/url');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Gagal mendapatkan URL autentikasi');
+      }
+      const { url } = await response.json();
+
+      // 2. Open Popup
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const authWindow = window.open(
+        url,
+        'google_auth_popup',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      if (!authWindow) {
+        alert('Popup diblokir! Harap izinkan popup untuk melakukan sinkronisasi.');
+        setIsSyncing(false);
+        return;
+      }
+
+      // 3. Listen for message from popup
+      const handleMessage = async (event: MessageEvent) => {
+        // Validate origin
+        const origin = event.origin;
+        if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+          return;
+        }
+
+        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+          window.removeEventListener('message', handleMessage);
+          const tokens = event.data.tokens;
+          
+          // 4. Call Sync API
+          try {
+            const syncRes = await fetch('/api/google/sync-sheets', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                tokens,
+                residents,
+                rtName: rtConfig.rtName
+              })
+            });
+            
+            const result = await syncRes.json();
+            if (result.success) {
+              alert(`Berhasil! Data telah disinkronkan ke Google Sheets.\n\nURL: ${result.spreadsheetUrl}`);
+              setRtConfig({ ...rtConfig, googleSheetUrl: result.spreadsheetUrl });
+              window.open(result.spreadsheetUrl, '_blank');
+            } else {
+              throw new Error(result.error || 'Gagal sinkronisasi');
+            }
+          } catch (err: any) {
+            console.error('Sync API error:', err);
+            alert(`Gagal Sinkronisasi: ${err.message}`);
+          } finally {
+            setIsSyncing(false);
+          }
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+
+      // Cleanup listener if window is closed without success
+      const checkWindow = setInterval(() => {
+        if (authWindow.closed) {
+          clearInterval(checkWindow);
+          setTimeout(() => {
+            if (isSyncing) {
+              setIsSyncing(false);
+              window.removeEventListener('message', handleMessage);
+            }
+          }, 1000);
+        }
+      }, 500);
+
+    } catch (error: any) {
+      console.error('Sync error:', error);
+      alert(`Gagal memulai sinkronisasi: ${error.message}`);
+      setIsSyncing(false);
+    }
+  };
 
   // Helper to calculate age
   const calculateAge = (dob: string) => {
@@ -224,6 +329,15 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
           </button>
           
           <button 
+            onClick={handleGoogleSync}
+            disabled={isSyncing || residents.length === 0}
+            className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-blue-50 border border-blue-100 text-blue-600 rounded-xl hover:bg-blue-100 transition-all text-xs font-bold disabled:opacity-50 shadow-sm"
+          >
+            {isSyncing ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
+            <span>SINKRONISASI GOOGLE SHEETS</span>
+          </button>
+
+          <button 
             onClick={handleExportExcel}
             disabled={isExporting || filteredResidents.length === 0}
             className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-all text-xs font-bold disabled:opacity-50 shadow-sm"
@@ -231,6 +345,18 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
             {isExporting ? <Loader2 size={16} className="animate-spin" /> : <FileSpreadsheet size={16} />}
             <span>UNDUH EXCEL</span>
           </button>
+
+          {rtConfig.googleSheetUrl && (
+            <a 
+              href={rtConfig.googleSheetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all text-xs font-bold shadow-lg shadow-slate-200"
+            >
+              <ExternalLink size={16} />
+              <span>BUKA GOOGLE SHEET</span>
+            </a>
+          )}
 
           <button 
             onClick={onAddResident}

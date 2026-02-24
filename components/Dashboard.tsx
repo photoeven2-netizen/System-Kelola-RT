@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Users, 
   FileCheck, 
@@ -7,7 +7,12 @@ import {
   TrendingUp,
   FileText,
   UserPlus,
-  ArrowRight
+  ArrowRight,
+  Info,
+  Calendar,
+  Megaphone,
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -18,12 +23,13 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { ServiceRequest, RequestStatus } from '../types';
+import { ServiceRequest, RequestStatus, DashboardInfo } from '../types';
 
 interface DashboardProps {
   residentsCount: number;
   requests: ServiceRequest[];
   onOpenRegister: () => void;
+  dashboardInfo: DashboardInfo;
 }
 
 const chartData = [
@@ -53,15 +59,58 @@ const StatCard = ({ label, value, icon: Icon, color, trend }: any) => (
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenRegister }) => {
+const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenRegister, dashboardInfo }) => {
+  const [selectedCategory, setSelectedCategory] = useState<{ title: string; items: any[]; icon: any; color: string } | null>(null);
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING).length;
   const totalRequests = requests.length;
+
+  const renderCard = (title: string, items: any[], icon: any, colorClass: string, iconColorClass: string) => {
+    const latestItem = items[items.length - 1];
+    return (
+      <div 
+        onClick={() => setSelectedCategory({ title, items, icon, color: iconColorClass })}
+        className="bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col cursor-pointer group"
+      >
+        <div className="flex items-center space-x-3 mb-4">
+          <div className={`p-2 ${colorClass} rounded-lg group-hover:scale-110 transition-transform`}>
+            {React.createElement(icon, { size: 20 })}
+          </div>
+          <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">{title}</h3>
+        </div>
+        <div className="flex-1">
+          {latestItem ? (
+            <>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{latestItem.title}</p>
+              <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-2">
+                {latestItem.content}
+              </p>
+            </>
+          ) : (
+            <p className="text-xs text-slate-400 italic">Belum ada informasi.</p>
+          )}
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <span className={`text-[10px] font-bold ${iconColorClass.split(' ')[0]} uppercase tracking-wider`}>
+            {items.length > 0 ? `Lihat ${items.length} Info` : 'Lihat Detail'}
+          </span>
+          <ArrowRight size={12} className="text-slate-300 group-hover:translate-x-1 transition-transform" />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
       <div>
-        <h2 className="text-xl md:text-2xl font-bold text-slate-800">SmartWarga Dashboard</h2>
-        <p className="text-xs md:text-sm text-slate-500">Selamat datang di sistem layanan digital RT 05.</p>
+        <h2 className="text-xl md:text-2xl font-bold text-slate-800">{dashboardInfo.dashboardTitle}</h2>
+        <p className="text-xs md:text-sm text-slate-500">{dashboardInfo.dashboardSubtitle}</p>
+      </div>
+
+      {/* Citizen Information Section */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {renderCard('Info Pemerintah', dashboardInfo.govItems || [], Megaphone, 'bg-blue-50 text-blue-600', 'text-blue-600 bg-blue-50')}
+        {renderCard('Kegiatan Warga', dashboardInfo.activityItems || [], Info, 'bg-emerald-50 text-emerald-600', 'text-emerald-600 bg-emerald-50')}
+        {renderCard('Jadwal Ronda', dashboardInfo.patrolItems || [], Calendar, 'bg-amber-50 text-amber-600', 'text-amber-600 bg-amber-50')}
       </div>
 
       {/* Quick Actions for Public Users */}
@@ -139,6 +188,64 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
           </div>
         </div>
       </div>
+
+      {/* Detail Info Modal */}
+      {selectedCategory && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className={`p-2 rounded-xl ${selectedCategory.color}`}>
+                  {React.createElement(selectedCategory.icon, { size: 20 })}
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">{selectedCategory.title}</h3>
+              </div>
+              <button 
+                onClick={() => setSelectedCategory(null)}
+                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto space-y-4 scrollbar-hide">
+              {selectedCategory.items.length > 0 ? [...selectedCategory.items].reverse().map((item, idx) => (
+                <div key={item.id || idx} className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-slate-800 text-sm uppercase tracking-wider">{item.title}</h4>
+                    {item.date && <span className="text-[10px] font-bold text-slate-400">{item.date}</span>}
+                  </div>
+                  <p className="text-sm text-slate-600 leading-relaxed font-medium whitespace-pre-line">
+                    {item.content}
+                  </p>
+                  {item.url && (
+                    <a 
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 text-xs font-bold text-blue-600 hover:underline"
+                    >
+                      <span>Lihat Selengkapnya</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+              )) : (
+                <div className="text-center py-12 text-slate-400 italic text-sm">
+                  Belum ada informasi tersedia untuk kategori ini.
+                </div>
+              )}
+            </div>
+            <div className="p-4 bg-slate-50 text-center shrink-0">
+              <button 
+                onClick={() => setSelectedCategory(null)}
+                className="text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors"
+              >
+                Tutup Jendela
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

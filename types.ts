@@ -78,6 +78,7 @@ export interface ServiceRequest {
 export interface AdminUser {
   id: string;
   username: string;
+  password?: string;
   name: string;
   role: string;
 }
@@ -88,4 +89,21 @@ export interface RTConfig {
   rtEmail: string;
   appName: string;
   appLogo: string;
+  googleSheetUrl?: string;
+}
+
+export interface DashboardItem {
+  id: string;
+  title: string;
+  content: string;
+  url?: string;
+  date?: string;
+}
+
+export interface DashboardInfo {
+  dashboardTitle: string;
+  dashboardSubtitle: string;
+  govItems: DashboardItem[];
+  activityItems: DashboardItem[];
+  patrolItems: DashboardItem[];
 }
