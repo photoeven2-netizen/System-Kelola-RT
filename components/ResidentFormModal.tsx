@@ -269,7 +269,7 @@ const ResidentFormModal: React.FC<ResidentFormModalProps> = ({ isOpen, onClose, 
                   <textarea 
                     required 
                     rows={3}
-                    placeholder="Contoh: Jl. Merdeka No. 05, RT 05/02"
+                    placeholder="Contoh: Jl. Merdeka No. 05, RT. 03/02"
                     className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm transition-all" 
                     value={formData.address} 
                     onChange={e => setFormData({...formData, address: e.target.value})} 

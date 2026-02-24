@@ -47,7 +47,7 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : {
       rtName: 'Pak RT Budiman',
       rtWhatsapp: '628123456789',
-      rtEmail: 'rt05@smartwarga.id',
+      rtEmail: 'rt03@smartwarga.id',
       appName: APP_NAME,
       appLogo: APP_LOGO_URL,
       googleSheetUrl: ''
@@ -62,7 +62,7 @@ const App: React.FC = () => {
       if (parsed.govInfo) {
         return {
           dashboardTitle: parsed.dashboardTitle || 'SmartWarga Dashboard',
-          dashboardSubtitle: parsed.dashboardSubtitle || 'Selamat datang di sistem layanan digital RT 05.',
+          dashboardSubtitle: parsed.dashboardSubtitle || 'Selamat datang di sistem layanan digital RT. 03.',
           govItems: [{ id: '1', title: 'Info Pemerintah', content: parsed.govInfo, url: parsed.govUrl }],
           activityItems: [{ id: '1', title: 'Kegiatan Warga', content: parsed.activityInfo, url: parsed.activityUrl }],
           patrolItems: [{ id: '1', title: 'Jadwal Ronda', content: parsed.patrolSchedule, url: parsed.patrolUrl }],
@@ -72,7 +72,7 @@ const App: React.FC = () => {
     }
     return {
       dashboardTitle: 'SmartWarga Dashboard',
-      dashboardSubtitle: 'Selamat datang di sistem layanan digital RT 05.',
+      dashboardSubtitle: 'Selamat datang di sistem layanan digital RT. 03.',
       govItems: [
         { id: '1', title: 'Vaksinasi Booster', content: 'Pemerintah sedang menjalankan program vaksinasi booster gratis di Puskesmas terdekat. Harap membawa KTP.', url: 'https://www.kemkes.go.id' }
       ],
@@ -94,6 +94,11 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedUser = localStorage.getItem('smartwarga_user');
     if (savedUser) setCurrentUser(JSON.parse(savedUser));
+
+    // Migration: Force update app name if it's still the old one
+    if (rtConfig.appName === "SmartWarga RT 05") {
+      setRtConfig(prev => ({ ...prev, appName: "SmartWarga RT. 03" }));
+    }
   }, []);
 
   useEffect(() => {

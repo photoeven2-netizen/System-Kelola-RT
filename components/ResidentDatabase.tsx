@@ -289,7 +289,7 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.setAttribute("href", url);
-      link.setAttribute("download", `Database_Warga_RT05_${new Date().toISOString().split('T')[0]}.xls`);
+      link.setAttribute("download", `Database_Warga_RT03_${new Date().toISOString().split('T')[0]}.xls`);
       link.style.visibility = 'hidden';
       document.body.appendChild(link);
       link.click();

@@ -32,7 +32,7 @@ const LetterRequests: React.FC<LetterRequestsProps> = ({ requests, onUpdateStatu
     const url = generateWAUrl({
       name: req.residentName,
       nik: req.nik,
-      address: req.address || 'Wilayah RT 05 / RW 02',
+      address: req.address || 'Wilayah RT. 03 / RW 02',
       type: req.type,
       rtPhone: rtConfig.rtWhatsapp,
       rtEmail: rtConfig.rtEmail,
@@ -48,7 +48,7 @@ const LetterRequests: React.FC<LetterRequestsProps> = ({ requests, onUpdateStatu
         <div>
           <h2 className="text-xl md:text-2xl font-bold text-slate-800">Antrean Layanan</h2>
           <p className="text-xs md:text-sm text-slate-500">
-            Daftar pengajuan surat yang sedang diproses oleh RT 05.
+            Daftar pengajuan surat yang sedang diproses oleh RT. 03.
           </p>
         </div>
       </div>

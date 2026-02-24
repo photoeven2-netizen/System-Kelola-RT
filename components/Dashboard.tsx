@@ -128,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
                 <UserPlus size={24} />
               </div>
               <h3 className="text-xl font-bold mb-2">Pendaftaran Warga Baru</h3>
-              <p className="text-blue-100 text-xs md:text-sm font-medium">Belum terdaftar di sistem RT 05? Daftarkan diri Anda secara mandiri di sini.</p>
+              <p className="text-blue-100 text-xs md:text-sm font-medium">Belum terdaftar di sistem RT. 03? Daftarkan diri Anda secara mandiri di sini.</p>
             </div>
             <div className="mt-6 flex items-center space-x-2 font-bold text-sm">
               <span>Mulai Daftar Sekarang</span>
@@ -184,7 +184,7 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
             </div>
           </div>
           <div className="pt-6 border-t border-white/10 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-            Dikembangkan untuk RT 05 / RW 02
+            Dikembangkan untuk RT. 03 / RW 02
           </div>
         </div>
       </div>

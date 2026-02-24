@@ -168,7 +168,9 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
       if (editingStaffId) {
         setAdmins(admins.map(a => a.id === editingStaffId ? { ...a, ...staffForm } : a));
       } else {
-        setAdmins([...admins, { ...staffForm, id: Date.now().toString() } as AdminUser]);
+        // Migration: Jika menambah admin baru dan admin default (admin/kosong) masih ada, hapus admin default tersebut
+        const filteredAdmins = admins.filter(a => !(a.id === '1' && a.username === 'admin' && !a.password));
+        setAdmins([...filteredAdmins, { ...staffForm, id: Date.now().toString() } as AdminUser]);
       }
       setIsSavingStaff(false);
       setIsStaffModalOpen(false);
@@ -525,7 +527,12 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-[10px] text-slate-600">{admin.name.charAt(0)}</div>
                     <div>
-                      <p className="text-[11px] font-bold text-slate-800">{admin.name}</p>
+                      <p className="text-[11px] font-bold text-slate-800 flex items-center">
+                        {admin.name}
+                        {admin.id === '1' && admin.username === 'admin' && !admin.password && (
+                          <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-600 text-[8px] rounded font-black animate-pulse">DEFAULT</span>
+                        )}
+                      </p>
                       <p className="text-[9px] text-slate-400 font-bold uppercase">{admin.role}</p>
                     </div>
                   </div>

@@ -74,7 +74,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, rtConfig, admins, onRegi
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">{rtConfig.appName}</h1>
-            <p className="text-slate-500 font-medium text-sm mt-1">Sistem Administrasi RT 05 / RW 02</p>
+            <p className="text-slate-500 font-medium text-sm mt-1">Sistem Administrasi RT. 03 / RW 02</p>
           </div>
         </div>
 
@@ -182,7 +182,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, rtConfig, admins, onRegi
         </div>
 
         <div className="text-center pt-4">
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">SmartWarga RT 05 • Digitalized v2.4.1</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.3em]">SmartWarga RT. 03 • Digitalized v2.4.1</p>
         </div>
       </div>
     </div>

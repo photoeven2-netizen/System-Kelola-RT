@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 
 // UBAH NAMA DAN LOGO DI SINI
-export const APP_NAME = "SmartWarga RT 05";
-export const APP_SUBTITLE = "Sistem Digital Layanan RT 05 / RW 02";
+export const APP_NAME = "SmartWarga RT. 03";
+export const APP_SUBTITLE = "Kampung Bhineka - RT. 03 / RW 02";
 export const APP_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/b/bc/Logo_RT_RW.png";
 
 export const FEATURE_LIST = [
