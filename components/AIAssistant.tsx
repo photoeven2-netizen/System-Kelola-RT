@@ -72,7 +72,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ rtConfig }) => {
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-flash-latest',
         contents: [
           { role: 'user', parts: [{ text: `Instruction: ${systemInstruction}\n\nUser Question: ${userMessage}` }] }
         ],
@@ -80,9 +80,12 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ rtConfig }) => {
 
       const aiResponse = response.text || "Maaf, saya sedang mengalami kendala teknis. Bisa ulangi pertanyaannya?";
       setMessages(prev => [...prev, { role: 'model', text: aiResponse }]);
-    } catch (error) {
-      console.error('AI Error:', error);
-      setMessages(prev => [...prev, { role: 'model', text: "Maaf, layanan asisten sedang sibuk. Silakan coba lagi nanti." }]);
+    } catch (error: any) {
+      console.error('AI Assistant Error Details:', error);
+      const errorMessage = error.message?.includes('API_KEY') 
+        ? "Konfigurasi API Key belum siap. Mohon tunggu sebentar atau hubungi admin."
+        : "Maaf, layanan asisten sedang sibuk. Silakan coba lagi nanti.";
+      setMessages(prev => [...prev, { role: 'model', text: errorMessage }]);
     } finally {
       setIsLoading(false);
     }

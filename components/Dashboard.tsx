@@ -12,7 +12,8 @@ import {
   Calendar,
   Megaphone,
   ExternalLink,
-  X
+  X,
+  Phone
 } from 'lucide-react';
 import { 
   XAxis, 
@@ -23,13 +24,14 @@ import {
   AreaChart,
   Area
 } from 'recharts';
-import { ServiceRequest, RequestStatus, DashboardInfo } from '../types';
+import { ServiceRequest, RequestStatus, DashboardInfo, RTConfig } from '../types';
 
 interface DashboardProps {
   residentsCount: number;
   requests: ServiceRequest[];
   onOpenRegister: () => void;
   dashboardInfo: DashboardInfo;
+  rtConfig: RTConfig;
 }
 
 const chartData = [
@@ -59,7 +61,7 @@ const StatCard = ({ label, value, icon: Icon, color, trend }: any) => (
   </div>
 );
 
-const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenRegister, dashboardInfo }) => {
+const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenRegister, dashboardInfo, rtConfig }) => {
   const [selectedCategory, setSelectedCategory] = useState<{ title: string; items: any[]; icon: any; color: string } | null>(null);
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING).length;
   const totalRequests = requests.length;
@@ -125,6 +127,43 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
         {renderCard('Kegiatan Warga', dashboardInfo.activityItems || [], Info, 'bg-emerald-50 text-emerald-600', 'text-emerald-600 bg-emerald-50')}
         {renderCard('Jadwal Ronda', dashboardInfo.patrolItems || [], Calendar, 'bg-amber-50 text-amber-600', 'text-amber-600 bg-amber-50')}
       </div>
+
+      {/* Committee Members Section */}
+      {(rtConfig.committeeMembers || []).length > 0 && (
+        <div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users size={20} /></div>
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Pengurus RT. 03</h3>
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {(rtConfig.committeeMembers || []).map((member) => (
+                <div key={member.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center text-center space-y-2 hover:border-blue-200 transition-colors">
+                  <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-100">
+                    {member.name.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800 line-clamp-1">{member.name}</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tighter">{member.position}</p>
+                  </div>
+                  {member.whatsapp && (
+                    <a 
+                      href={`https://wa.me/${member.whatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all"
+                    >
+                      <Phone size={12} />
+                    </a>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions for Public Users */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

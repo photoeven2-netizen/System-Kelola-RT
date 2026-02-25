@@ -291,6 +291,7 @@ const App: React.FC = () => {
                   requests={requests} 
                   onOpenRegister={() => setIsResidentModalOpen(true)} 
                   dashboardInfo={dashboardInfo}
+                  rtConfig={rtConfig}
                 />
               )}
               {activeTab === 'warga' && (
