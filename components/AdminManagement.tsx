@@ -31,6 +31,11 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
   const [githubToken, setGithubToken] = useState<string | null>(() => localStorage.getItem('github_token'));
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
+  const [googleTokens, setGoogleTokens] = useState<any | null>(() => {
+    const saved = localStorage.getItem('google_tokens');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isSyncingSheets, setIsSyncingSheets] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const handleConnectGithub = async () => {
@@ -84,6 +89,79 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
     setGithubToken(null);
     setGithubRepos([]);
     localStorage.removeItem('github_token');
+  };
+
+  const handleConnectGoogle = async () => {
+    try {
+      const res = await fetch('/api/auth/google/url');
+      const data = await res.json();
+      
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      
+      const authWindow = window.open(data.url, 'google_auth_popup', `width=${width},height=${height},left=${left},top=${top}`);
+      
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
+          const tokens = event.data.tokens;
+          if (tokens) {
+            setGoogleTokens(tokens);
+            localStorage.setItem('google_tokens', JSON.stringify(tokens));
+            alert('Berhasil terhubung dengan Google!');
+          }
+          window.removeEventListener('message', handleMessage);
+        }
+      };
+      
+      window.addEventListener('message', handleMessage);
+    } catch (error) {
+      console.error("Failed to connect Google:", error);
+      alert("Gagal menghubungkan Google. Pastikan kredensial OAuth sudah dikonfigurasi.");
+    }
+  };
+
+  const handleSyncSheets = async () => {
+    if (!googleTokens) return;
+    
+    setIsSyncingSheets(true);
+    try {
+      const residents = JSON.parse(localStorage.getItem('smartwarga_residents') || '[]');
+      const res = await fetch('/api/google/sync-sheets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokens: googleTokens,
+          residents,
+          rtName: rtConfig.rtName
+        })
+      });
+      
+      const data = await res.json();
+      if (data.success) {
+        setRtConfig({ ...rtConfig, googleSheetUrl: data.spreadsheetUrl });
+        setTempConfig({ ...tempConfig, googleSheetUrl: data.spreadsheetUrl });
+        alert('Sinkronisasi berhasil! Database warga telah diunggah ke Google Sheets.');
+      } else {
+        alert('Gagal sinkronisasi: ' + data.error);
+      }
+    } catch (error) {
+      console.error("Failed to sync sheets:", error);
+      alert("Terjadi kesalahan saat sinkronisasi.");
+    } finally {
+      setIsSyncingSheets(false);
+    }
+  };
+
+  const handleDisconnectGoogle = () => {
+    setGoogleTokens(null);
+    localStorage.removeItem('google_tokens');
   };
 
   React.useEffect(() => {
@@ -383,6 +461,76 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Google Sheets Integration Section */}
+          <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><Database size={20} /></div>
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Google Sheets Sync</h3>
+              </div>
+              {googleTokens ? (
+                <div className="flex items-center space-x-3">
+                  <button 
+                    onClick={handleDisconnectGoogle}
+                    className="text-[10px] font-bold text-red-500 hover:underline"
+                  >
+                    PUTUSKAN
+                  </button>
+                  <button 
+                    onClick={handleSyncSheets}
+                    disabled={isSyncingSheets}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 flex items-center space-x-2 shadow-lg shadow-emerald-100 disabled:opacity-50"
+                  >
+                    {isSyncingSheets ? <Loader2 size={14} className="animate-spin" /> : <RefreshCcw size={14} />}
+                    <span>SINKRON SEKARANG</span>
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleConnectGoogle}
+                  className="px-6 py-2 bg-white border-2 border-slate-200 text-slate-700 rounded-xl text-xs font-bold hover:bg-slate-50 flex items-center space-x-2 shadow-sm"
+                >
+                  <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
+                  <span>HUBUNGKAN GOOGLE</span>
+                </button>
+              )}
+            </div>
+            <div className="p-6">
+              {googleTokens ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status Koneksi</p>
+                    <span className="flex items-center space-x-1 text-emerald-600 text-[10px] font-bold">
+                      <CheckCircle size={12} />
+                      <span>TERHUBUNG</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Akun Google Anda telah terhubung. Anda dapat menyinkronkan database warga ke Google Sheets secara otomatis.
+                  </p>
+                  {rtConfig.googleSheetUrl && (
+                    <a 
+                      href={rtConfig.googleSheetUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center space-x-2 p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-xs font-bold hover:bg-emerald-100 transition-colors"
+                    >
+                      <LinkIcon size={14} />
+                      <span className="truncate">Buka Spreadsheet Database Warga</span>
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8 space-y-3">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                    <Database size={24} />
+                  </div>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">Hubungkan akun Google Anda untuk mengaktifkan fitur sinkronisasi database warga ke Google Sheets secara otomatis.</p>
+                </div>
+              )}
             </div>
           </div>
 
