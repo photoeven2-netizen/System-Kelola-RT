@@ -101,13 +101,16 @@ const ResidentDatabase: React.FC<ResidentDatabaseProps> = ({
           
           // 4. Call Sync API
           try {
+            const spreadsheetId = rtConfig.googleSheetUrl?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+            
             const syncRes = await fetch('/api/google/sync-sheets', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 tokens,
                 residents,
-                rtName: rtConfig.rtName
+                rtName: rtConfig.rtName,
+                spreadsheetId
               })
             });
             

@@ -63,8 +63,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ rtConfig }) => {
         
         Data Konteks:
         - Nama Aplikasi: ${rtConfig.appName}
-        - Ketua RT: ${rtConfig.rtName}
-        - WhatsApp RT: ${rtConfig.rtWhatsapp}
+        - Struktur Pengurus: ${(rtConfig.committeeMembers || []).map(m => `${m.position}: ${m.name} (${m.whatsapp || '-'})`).join(', ')}
+        - Email RT: ${rtConfig.rtEmail}
         - Jenis Surat: ${Object.values(LetterType).join(', ')}
         - Syarat Warga Baru: NIK, No KK, Alamat Lengkap.
         

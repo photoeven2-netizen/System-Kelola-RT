@@ -8,13 +8,13 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "https://picsum.photos/seed/smartwarga/192/192",
+      "src": "https://ais-dev-w6pd5nksvq66heguaovi7k-264076151992.asia-southeast1.run.app/logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://picsum.photos/seed/smartwarga/512/512",
+      "src": "https://ais-dev-w6pd5nksvq66heguaovi7k-264076151992.asia-southeast1.run.app/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

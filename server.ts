@@ -26,8 +26,12 @@ app.get("/api/auth/google/url", (req, res) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     console.error("Missing Google OAuth credentials in environment variables");
     return res.status(500).json({ 
-      error: "Konfigurasi Google OAuth belum lengkap (GOOGLE_CLIENT_ID/SECRET tidak ditemukan)." 
+      error: "Konfigurasi Google OAuth belum lengkap (GOOGLE_CLIENT_ID/SECRET tidak ditemukan di Environment Variables)." 
     });
+  }
+
+  if (!process.env.APP_URL) {
+    console.warn("APP_URL is not set, using default redirect URI");
   }
 
   const oauth2Client = new google.auth.OAuth2(
@@ -186,16 +190,19 @@ app.post("/api/google/sync-sheets", async (req, res) => {
     auth.setCredentials(tokens);
     const sheets = google.sheets({ version: "v4", auth });
 
-    // 1. Create a new spreadsheet
-    const spreadsheet = await sheets.spreadsheets.create({
-      requestBody: {
-        properties: {
-          title: `Database Warga - ${rtName || 'SmartWarga'} - ${new Date().toLocaleDateString('id-ID')}`,
-        },
-      },
-    });
+    let spreadsheetId = req.body.spreadsheetId;
 
-    const spreadsheetId = spreadsheet.data.spreadsheetId;
+    // 1. Create a new spreadsheet if ID is not provided
+    if (!spreadsheetId) {
+      const spreadsheet = await sheets.spreadsheets.create({
+        requestBody: {
+          properties: {
+            title: `Database Warga - ${rtName || 'SmartWarga'} - ${new Date().toLocaleDateString('id-ID')}`,
+          },
+        },
+      });
+      spreadsheetId = spreadsheet.data.spreadsheetId;
+    }
 
     // 2. Prepare data
     const headers = [
@@ -213,7 +220,7 @@ app.post("/api/google/sync-sheets", async (req, res) => {
       ])
     ];
 
-    // 3. Write data
+    // 3. Write data (Overwrite Sheet1)
     await sheets.spreadsheets.values.update({
       spreadsheetId: spreadsheetId!,
       range: "Sheet1!A1",
@@ -221,7 +228,10 @@ app.post("/api/google/sync-sheets", async (req, res) => {
       requestBody: { values },
     });
 
-    res.json({ success: true, spreadsheetUrl: spreadsheet.data.spreadsheetUrl });
+    // Get the final URL
+    const finalSpreadsheet = await sheets.spreadsheets.get({ spreadsheetId: spreadsheetId! });
+
+    res.json({ success: true, spreadsheetUrl: finalSpreadsheet.data.spreadsheetUrl, spreadsheetId });
   } catch (error: any) {
     console.error("Error syncing to sheets:", error);
     res.status(500).json({ error: error.message });

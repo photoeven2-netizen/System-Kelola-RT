@@ -64,8 +64,16 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
   const pendingRequests = requests.filter(r => r.status === RequestStatus.PENDING).length;
   const totalRequests = requests.length;
 
+  const getTodayName = () => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    return days[new Date().getDay()];
+  };
+
   const renderCard = (title: string, items: any[], icon: any, colorClass: string, iconColorClass: string) => {
-    const latestItem = items[items.length - 1];
+    const today = getTodayName();
+    const todayItem = items.find(item => item.title.toLowerCase().includes(today.toLowerCase()));
+    const latestItem = todayItem || items[items.length - 1];
+    
     return (
       <div 
         onClick={() => setSelectedCategory({ title, items, icon, color: iconColorClass })}
@@ -80,7 +88,12 @@ const Dashboard: React.FC<DashboardProps> = ({ residentsCount, requests, onOpenR
         <div className="flex-1">
           {latestItem ? (
             <>
-              <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">{latestItem.title}</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">{latestItem.title}</p>
+                {todayItem && (
+                  <span className="text-[8px] font-black bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded uppercase">Hari Ini</span>
+                )}
+              </div>
               <p className="text-xs text-slate-600 leading-relaxed font-medium line-clamp-2">
                 {latestItem.content}
               </p>

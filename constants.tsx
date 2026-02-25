@@ -10,7 +10,7 @@ import {
 // UBAH NAMA DAN LOGO DI SINI
 export const APP_NAME = "SmartWarga RT. 03";
 export const APP_SUBTITLE = "Kampung Bhineka - RT. 03 / RW 02";
-export const APP_LOGO_URL = "https://upload.wikimedia.org/wikipedia/commons/b/bc/Logo_RT_RW.png";
+export const APP_LOGO_URL = "https://ais-dev-w6pd5nksvq66heguaovi7k-264076151992.asia-southeast1.run.app/logo.png";
 
 export const FEATURE_LIST = [
   {

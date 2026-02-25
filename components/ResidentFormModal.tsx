@@ -231,6 +231,61 @@ const ResidentFormModal: React.FC<ResidentFormModalProps> = ({ isOpen, onClose, 
 
             <div className="space-y-4">
               <div className="flex items-center space-x-2 text-blue-600">
+                <User size={16} /><h4 className="text-[11px] font-black uppercase tracking-widest">Informasi Tambahan</h4>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Jenis Kelamin</label>
+                  <select required className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none bg-white" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})}>
+                    <option value="Laki-laki">Laki-laki</option>
+                    <option value="Perempuan">Perempuan</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Agama</label>
+                  <select required className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none bg-white" value={formData.religion} onChange={e => setFormData({...formData, religion: e.target.value})}>
+                    <option value="Islam">Islam</option>
+                    <option value="Kristen">Kristen</option>
+                    <option value="Katolik">Katolik</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Budha">Budha</option>
+                    <option value="Konghucu">Konghucu</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Status Pernikahan</label>
+                  <select required className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none bg-white" value={formData.maritalStatus} onChange={e => setFormData({...formData, maritalStatus: e.target.value as MaritalStatus})}>
+                    {Object.values(MaritalStatus).map(status => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Golongan Darah</label>
+                  <select required className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm outline-none bg-white" value={formData.bloodType} onChange={e => setFormData({...formData, bloodType: e.target.value})}>
+                    <option value="-">-</option>
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="AB">AB</option>
+                    <option value="O">O</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Pekerjaan</label>
+                  <input 
+                    required 
+                    type="text" 
+                    placeholder="Contoh: Karyawan Swasta, Ibu Rumah Tangga, dll."
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm bg-white focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none shadow-sm transition-all" 
+                    value={formData.occupation} 
+                    onChange={e => setFormData({...formData, occupation: e.target.value})} 
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2 text-blue-600">
                 <MapPin size={16} /><h4 className="text-[11px] font-black uppercase tracking-widest">Domisili Sekarang</h4>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

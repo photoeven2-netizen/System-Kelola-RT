@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { Shield, UserPlus, MoreHorizontal, ShieldAlert, Lock, UserCheck, RefreshCcw, Database, Server, Loader2, CheckCircle, FileUp, AlertCircle, LogOut, Mail, Phone, User as UserIcon, Save, X, Key, Briefcase, Image as ImageIcon, RotateCcw, Megaphone, Info, Calendar, Link as LinkIcon, Github, Trash2, Plus } from 'lucide-react';
-import { AdminRole, RTConfig, AdminUser, DashboardInfo } from '../types';
+import { Shield, UserPlus, MoreHorizontal, ShieldAlert, Lock, UserCheck, RefreshCcw, Database, Server, Loader2, CheckCircle, FileUp, AlertCircle, LogOut, Mail, Phone, User as UserIcon, Save, X, Key, Briefcase, Image as ImageIcon, RotateCcw, Megaphone, Info, Calendar, Link as LinkIcon, Github, Trash2, Plus, Zap, Users } from 'lucide-react';
+import { AdminRole, RTConfig, AdminUser, DashboardInfo, CommitteeMember } from '../types';
 import { APP_LOGO_URL, APP_NAME } from '../constants';
 
 interface AdminManagementProps {
@@ -29,6 +29,7 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
   const [isSavingConfig, setIsSavingConfig] = useState(false);
   const [isSavingDashboard, setIsSavingDashboard] = useState(false);
   const [githubToken, setGithubToken] = useState<string | null>(() => localStorage.getItem('github_token'));
+  const [vercelToken, setVercelToken] = useState<string | null>(() => localStorage.getItem('vercel_token'));
   const [githubRepos, setGithubRepos] = useState<any[]>([]);
   const [isFetchingRepos, setIsFetchingRepos] = useState(false);
   const [googleTokens, setGoogleTokens] = useState<any | null>(() => {
@@ -91,9 +92,38 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
     localStorage.removeItem('github_token');
   };
 
+  const handleConnectVercel = () => {
+    const token = window.prompt("Masukkan Vercel API Token Anda:");
+    if (token) {
+      setVercelToken(token);
+      localStorage.setItem('vercel_token', token);
+      alert("Vercel Token berhasil disimpan!");
+    }
+  };
+
+  const handleDisconnectVercel = () => {
+    if (window.confirm("Putuskan koneksi Vercel?")) {
+      setVercelToken(null);
+      localStorage.removeItem('vercel_token');
+    }
+  };
+
   const handleConnectGoogle = async () => {
     try {
       const res = await fetch('/api/auth/google/url');
+      
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await res.json();
+          alert(`Gagal: ${errorData.error}`);
+        } else {
+          const text = await res.text();
+          alert(`Server Error (${res.status}): ${text.substring(0, 100)}...`);
+        }
+        return;
+      }
+
       const data = await res.json();
       
       if (data.error) {
@@ -108,6 +138,11 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
       
       const authWindow = window.open(data.url, 'google_auth_popup', `width=${width},height=${height},left=${left},top=${top}`);
       
+      if (!authWindow) {
+        alert("Popup diblokir oleh browser. Silakan izinkan popup untuk situs ini.");
+        return;
+      }
+
       const handleMessage = (event: MessageEvent) => {
         if (event.data?.type === 'GOOGLE_AUTH_SUCCESS') {
           const tokens = event.data.tokens;
@@ -121,9 +156,9 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
       };
       
       window.addEventListener('message', handleMessage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to connect Google:", error);
-      alert("Gagal menghubungkan Google. Pastikan kredensial OAuth sudah dikonfigurasi.");
+      alert(`Terjadi kesalahan koneksi: ${error.message || 'Unknown error'}. Pastikan server berjalan dan kredensial OAuth sudah benar.`);
     }
   };
 
@@ -133,13 +168,16 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
     setIsSyncingSheets(true);
     try {
       const residents = JSON.parse(localStorage.getItem('smartwarga_residents') || '[]');
+      const spreadsheetId = rtConfig.googleSheetUrl?.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+      
       const res = await fetch('/api/google/sync-sheets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           tokens: googleTokens,
           residents,
-          rtName: rtConfig.rtName
+          rtName: rtConfig.rtName,
+          spreadsheetId
         })
       });
       
@@ -177,6 +215,37 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
   const [staffForm, setStaffForm] = useState<StaffFormData>({
     name: '', username: '', role: '', password: ''
   });
+
+  // Committee Members State
+  const [isCommitteeModalOpen, setIsCommitteeModalOpen] = useState(false);
+  const [editingCommitteeId, setEditingCommitteeId] = useState<string | null>(null);
+  const [committeeForm, setCommitteeForm] = useState<Partial<CommitteeMember>>({
+    name: '', position: '', whatsapp: ''
+  });
+
+  const handleSaveCommittee = (e: React.FormEvent) => {
+    e.preventDefault();
+    const members = tempConfig.committeeMembers || [];
+    let updatedMembers;
+    
+    if (editingCommitteeId) {
+      updatedMembers = members.map(m => m.id === editingCommitteeId ? { ...m, ...committeeForm } as CommitteeMember : m);
+    } else {
+      updatedMembers = [...members, { ...committeeForm, id: Date.now().toString() } as CommitteeMember];
+    }
+    
+    setTempConfig({ ...tempConfig, committeeMembers: updatedMembers });
+    setIsCommitteeModalOpen(false);
+    setEditingCommitteeId(null);
+    setCommitteeForm({ name: '', position: '', whatsapp: '' });
+  };
+
+  const handleDeleteCommittee = (id: string) => {
+    if (window.confirm("Hapus pengurus ini dari struktur organisasi?")) {
+      const updatedMembers = (tempConfig.committeeMembers || []).filter(m => m.id !== id);
+      setTempConfig({ ...tempConfig, committeeMembers: updatedMembers });
+    }
+  };
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -593,57 +662,169 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
             </div>
           </div>
 
-          {/* RT Identity Section */}
+          {/* Vercel Integration Section */}
+          <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-black text-white rounded-lg"><Zap size={20} /></div>
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Vercel Deployment</h3>
+              </div>
+              {vercelToken ? (
+                <button 
+                  onClick={handleDisconnectVercel}
+                  className="text-[10px] font-bold text-red-500 hover:underline"
+                >
+                  PUTUSKAN KONEKSI
+                </button>
+              ) : (
+                <button 
+                  onClick={handleConnectVercel}
+                  className="px-6 py-2 bg-black text-white rounded-xl text-xs font-bold hover:bg-slate-800 flex items-center space-x-2 shadow-lg shadow-slate-200"
+                >
+                  <Zap size={14} />
+                  <span>HUBUNGKAN VERCEL</span>
+                </button>
+              )}
+            </div>
+            <div className="p-6">
+              {vercelToken ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status Deployment</p>
+                    <span className="flex items-center space-x-1 text-emerald-600 text-[10px] font-bold">
+                      <CheckCircle size={12} />
+                      <span>TERHUBUNG</span>
+                    </span>
+                  </div>
+                  <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-2">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase">Vercel API Token</p>
+                    <p className="text-xs font-mono text-slate-600 truncate">••••••••••••••••••••••••••••</p>
+                    <p className="text-[10px] text-slate-400 italic">Token ini digunakan untuk menghubungkan repositori GitHub Anda ke Vercel untuk deployment otomatis.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <a 
+                      href="https://vercel.com/new" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 bg-black text-white text-center rounded-xl text-[10px] font-bold hover:bg-slate-800 transition-all"
+                    >
+                      BUAT PROJECT BARU
+                    </a>
+                    <a 
+                      href="https://vercel.com/dashboard" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex-1 py-2.5 bg-white border border-slate-200 text-slate-700 text-center rounded-xl text-[10px] font-bold hover:bg-slate-50 transition-all"
+                    >
+                      DASHBOARD VERCEL
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 space-y-3">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                    <Zap size={24} />
+                  </div>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">Hubungkan akun Vercel Anda untuk mengintegrasikan repositori GitHub dan melakukan deployment otomatis.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* RT Identity & Committee Section */}
           <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Server size={20} /></div>
-                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Identitas Pengurus</h3>
+                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Users size={20} /></div>
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Struktur Organisasi Pengurus</h3>
               </div>
-              <button 
-                onClick={handleSaveConfig} 
-                disabled={isSavingConfig}
-                className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg shadow-blue-100"
-              >
-                {isSavingConfig ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                <span>SIMPAN PERUBAHAN</span>
-              </button>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={() => {
+                    setEditingCommitteeId(null);
+                    setCommitteeForm({ name: '', position: '', whatsapp: '' });
+                    setIsCommitteeModalOpen(true);
+                  }}
+                  className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                  <Plus size={16} />
+                </button>
+                <button 
+                  onClick={handleSaveConfig} 
+                  disabled={isSavingConfig}
+                  className="px-6 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2 shadow-lg shadow-blue-100"
+                >
+                  {isSavingConfig ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  <span>SIMPAN STRUKTUR</span>
+                </button>
+              </div>
             </div>
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Ketua RT</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={tempConfig.rtName} onChange={e => setTempConfig({...tempConfig, rtName: e.target.value})} />
-                </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(tempConfig.committeeMembers || []).length > 0 ? (tempConfig.committeeMembers || []).map((member) => (
+                  <div key={member.id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between group">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                        {member.name.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-800">{member.name}</p>
+                        <p className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{member.position}</p>
+                        {member.whatsapp && (
+                          <p className="text-[9px] text-emerald-600 font-bold mt-0.5 flex items-center space-x-1">
+                            <Phone size={8} />
+                            <span>{member.whatsapp}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => {
+                          setEditingCommitteeId(member.id);
+                          setCommitteeForm(member);
+                          setIsCommitteeModalOpen(true);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
+                      >
+                        <Key size={14} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteCommittee(member.id)}
+                        className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="md:col-span-2 text-center py-8 border-2 border-dashed border-slate-100 rounded-2xl">
+                    <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Belum ada pengurus ditambahkan</p>
+                  </div>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">WhatsApp Pak RT</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="text" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={tempConfig.rtWhatsapp} onChange={e => setTempConfig({...tempConfig, rtWhatsapp: e.target.value})} />
+
+              <div className="pt-4 border-t border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Email RT (Notifikasi)</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input type="email" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={tempConfig.rtEmail} onChange={e => setTempConfig({...tempConfig, rtEmail: e.target.value})} />
+                  </div>
                 </div>
-              </div>
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Email RT (Notifikasi)</label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input type="email" className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={tempConfig.rtEmail} onChange={e => setTempConfig({...tempConfig, rtEmail: e.target.value})} />
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Google Sheet URL (Database)</label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <input 
+                      type="url" 
+                      placeholder="https://docs.google.com/spreadsheets/d/..."
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" 
+                      value={tempConfig.googleSheetUrl || ''} 
+                      onChange={e => setTempConfig({...tempConfig, googleSheetUrl: e.target.value})} 
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="md:col-span-2 space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-500 uppercase">Google Sheet URL (Database)</label>
-                <div className="relative">
-                  <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <input 
-                    type="url" 
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" 
-                    value={tempConfig.googleSheetUrl || ''} 
-                    onChange={e => setTempConfig({...tempConfig, googleSheetUrl: e.target.value})} 
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 italic">URL ini akan otomatis terisi saat Anda melakukan sinkronisasi pertama kali.</p>
               </div>
             </div>
           </div>
@@ -726,6 +907,39 @@ const AdminManagement: React.FC<AdminManagementProps> = ({ userRole, onLogout, r
                 <button disabled={isSavingStaff} type="submit" className="flex-[2] py-3 bg-blue-600 text-white font-bold rounded-xl text-sm flex items-center justify-center space-x-2">
                   {isSavingStaff ? <Loader2 size={16} className="animate-spin" /> : <UserCheck size={16} />}
                   <span>{editingStaffId ? 'UPDATE PENGELOLA' : 'SIMPAN STAF'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Add/Edit Committee Member */}
+      {isCommitteeModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-[28px] shadow-2xl overflow-hidden animate-in zoom-in duration-200">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">{editingCommitteeId ? 'Edit Pengurus' : 'Tambah Pengurus Baru'}</h3>
+              <button onClick={() => setIsCommitteeModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSaveCommittee} className="p-6 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Nama Lengkap</label>
+                <input required type="text" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={committeeForm.name} onChange={e => setCommitteeForm({...committeeForm, name: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Jabatan / Posisi</label>
+                <input required type="text" placeholder="Contoh: Ketua RT, Sekretaris, Bendahara" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={committeeForm.position} onChange={e => setCommitteeForm({...committeeForm, position: e.target.value})} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">WhatsApp (Opsional)</label>
+                <input type="text" placeholder="Contoh: 628123456789" className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl text-sm outline-none" value={committeeForm.whatsapp} onChange={e => setCommitteeForm({...committeeForm, whatsapp: e.target.value})} />
+              </div>
+              <div className="pt-4 flex gap-3">
+                <button type="button" onClick={() => setIsCommitteeModalOpen(false)} className="flex-1 py-3 bg-slate-50 text-slate-600 font-bold rounded-xl text-sm">Batal</button>
+                <button type="submit" className="flex-[2] py-3 bg-blue-600 text-white font-bold rounded-xl text-sm flex items-center justify-center space-x-2">
+                  <Save size={16} />
+                  <span>{editingCommitteeId ? 'UPDATE PENGURUS' : 'SIMPAN PENGURUS'}</span>
                 </button>
               </div>
             </form>

@@ -83,6 +83,13 @@ export interface AdminUser {
   role: string;
 }
 
+export interface CommitteeMember {
+  id: string;
+  name: string;
+  position: string;
+  whatsapp?: string;
+}
+
 export interface RTConfig {
   rtName: string;
   rtWhatsapp: string;
@@ -90,6 +97,7 @@ export interface RTConfig {
   appName: string;
   appLogo: string;
   googleSheetUrl?: string;
+  committeeMembers?: CommitteeMember[];
 }
 
 export interface DashboardItem {
