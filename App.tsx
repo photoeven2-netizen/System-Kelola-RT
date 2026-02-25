@@ -95,9 +95,16 @@ const App: React.FC = () => {
     const savedUser = localStorage.getItem('smartwarga_user');
     if (savedUser) setCurrentUser(JSON.parse(savedUser));
 
-    // Migration: Force update app name if it's still the old one
-    if (rtConfig.appName === "SmartWarga RT 05") {
-      setRtConfig(prev => ({ ...prev, appName: "SmartWarga RT. 03" }));
+    // Migration: Force update app name and subtitle if they still reference the old RT
+    if (rtConfig.appName && (rtConfig.appName.includes("RT 05") || rtConfig.appName.includes("RT05"))) {
+      setRtConfig(prev => ({ ...prev, appName: APP_NAME, rtEmail: 'rt03@smartwarga.id' }));
+    }
+
+    if (dashboardInfo.dashboardSubtitle && (dashboardInfo.dashboardSubtitle.includes("RT 05") || dashboardInfo.dashboardSubtitle.includes("RT05"))) {
+      setDashboardInfo(prev => ({ 
+        ...prev, 
+        dashboardSubtitle: prev.dashboardSubtitle.replace(/RT\s?05/g, "RT. 03") 
+      }));
     }
   }, []);
 

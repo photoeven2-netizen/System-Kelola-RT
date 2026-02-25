@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { LetterType, ServiceRequest, RequestStatus, RTConfig, MaritalStatus } from '../types';
 import { jsPDF } from 'jspdf';
+import { generateWAUrl } from '../services/whatsappService';
+import { MessageSquare } from 'lucide-react';
 
 interface ServiceRequestModalProps {
   isOpen: boolean;
@@ -232,9 +234,13 @@ const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ isOpen, onClo
     doc.save(`Draft_${formData.type.replace(/\s+/g, '_')}_${formData.name}.pdf`);
   };
 
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
+
   const handleFinalSubmit = () => {
+    const requestId = 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+    setLastRequestId(requestId);
     onSubmit({
-      id: 'REQ-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      id: requestId,
       nik: formData.nik,
       residentName: formData.name,
       type: formData.type,
@@ -244,6 +250,42 @@ const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ isOpen, onClo
       address: formData.address || formData.addrAsal
     });
     setStep(4);
+  };
+
+  const handleSendWA = () => {
+    if (!lastRequestId) return;
+    
+    const url = generateWAUrl({
+      name: formData.name,
+      nik: formData.nik,
+      pobDob: `${formData.pob}, ${formData.dob}`,
+      address: formData.address || formData.addrAsal || 'Wilayah RT. 03 / RW 02',
+      type: formData.type,
+      purpose: formData.purpose,
+      rtPhone: rtConfig.rtWhatsapp,
+      rtEmail: rtConfig.rtEmail,
+      pdfLink: 'https://smartwarga.id/docs/' + lastRequestId + '.pdf',
+      deathDetails: formData.type === LetterType.KEMATIAN ? {
+        date: formData.deathDate,
+        dayPasaran: `${formData.deathDay} ${formData.deathPasaran}`,
+        time: formData.deathTime,
+        place: formData.deathPlace,
+        burialPlace: formData.burialPlace
+      } : undefined,
+      nikahDetails: formData.type === LetterType.NIKAH ? {
+        statusPerkawinan: formData.brideStatus,
+        father: { name: formData.fatherName },
+        mother: { name: formData.motherName }
+      } : undefined,
+      pindahDetails: formData.type === LetterType.PINDAH ? {
+        destAddress: formData.addrTujuan,
+        destProv: formData.provTujuan,
+        destReg: formData.kabTujuan,
+        destDist: formData.kecTujuan,
+        destVill: formData.desaTujuan
+      } : undefined
+    });
+    window.open(url, '_blank');
   };
 
   if (!isOpen) return null;
@@ -476,8 +518,23 @@ const ServiceRequestModal: React.FC<ServiceRequestModalProps> = ({ isOpen, onClo
             <div className="text-center py-12 space-y-6 animate-in fade-in">
               <div className="w-20 h-20 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><Send size={32} /></div>
               <h4 className="text-2xl font-bold text-slate-800">Berhasil Dikirim!</h4>
-              <p className="text-slate-500 text-sm">Pengajuan Anda telah masuk ke antrean. Silakan konfirmasi ke Pak RT {rtConfig.rtName} melalui WhatsApp.</p>
-              <button onClick={() => { onClose(); setStep(1); }} className="px-8 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-sm">TUTUP</button>
+              <p className="text-slate-500 text-sm px-4">Pengajuan Anda telah masuk ke antrean sistem. Silakan konfirmasi ke Pak RT {rtConfig.rtName} melalui WhatsApp untuk mempercepat proses.</p>
+              
+              <div className="flex flex-col gap-3 max-w-xs mx-auto px-4">
+                <button 
+                  onClick={handleSendWA} 
+                  className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-emerald-100 transition-all active:scale-95"
+                >
+                  <MessageSquare size={20} />
+                  <span>KONFIRMASI VIA WHATSAPP</span>
+                </button>
+                <button 
+                  onClick={() => { onClose(); setStep(1); }} 
+                  className="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-xl text-sm hover:bg-slate-200 transition-colors"
+                >
+                  TUTUP
+                </button>
+              </div>
             </div>
           )}
         </div>
