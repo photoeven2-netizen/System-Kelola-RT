@@ -72,6 +72,12 @@ io.on("connection", (socket) => {
 
   socket.on("sync:state", (data) => {
     const { key, value } = data;
+    
+    // Safeguard: Don't allow wiping out admins if the new list is empty
+    if (key === 'admins' && (!value || value.length === 0)) {
+      return;
+    }
+
     appState[key] = value;
     saveData(appState);
     // Broadcast to all other clients

@@ -174,34 +174,40 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_admins', JSON.stringify(admins));
     if (!isRemoteUpdate.current) syncState('admins', admins);
-  }, [admins, syncState]);
+  }, [admins, syncState, isInitialLoading]);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_rt_config', JSON.stringify(rtConfig));
     if (!isRemoteUpdate.current) syncState('rtConfig', rtConfig);
-  }, [rtConfig, syncState]);
+  }, [rtConfig, syncState, isInitialLoading]);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_dashboard_info', JSON.stringify(dashboardInfo));
     if (!isRemoteUpdate.current) syncState('dashboardInfo', dashboardInfo);
-  }, [dashboardInfo, syncState]);
+  }, [dashboardInfo, syncState, isInitialLoading]);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_residents', JSON.stringify(residents));
     if (!isRemoteUpdate.current) syncState('residents', residents);
-  }, [residents, syncState]);
+  }, [residents, syncState, isInitialLoading]);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_requests', JSON.stringify(requests));
     if (!isRemoteUpdate.current) syncState('requests', requests);
-  }, [requests, syncState]);
+  }, [requests, syncState, isInitialLoading]);
 
   useEffect(() => {
+    if (isInitialLoading) return;
     localStorage.setItem('smartwarga_logs', JSON.stringify(auditLogs));
     if (!isRemoteUpdate.current) syncState('auditLogs', auditLogs);
-  }, [auditLogs, syncState]);
+  }, [auditLogs, syncState, isInitialLoading]);
 
   const addLog = (action: string, target: string, type: string) => {
     const newLog = {
