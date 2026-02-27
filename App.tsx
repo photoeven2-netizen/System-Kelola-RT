@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar.tsx';
 import Header from './components/Header.tsx';
 import Dashboard from './components/Dashboard.tsx';
@@ -13,8 +13,11 @@ import ResidentFormModal from './components/ResidentFormModal.tsx';
 import LoginPage from './components/LoginPage.tsx';
 import AIAssistant from './components/AIAssistant.tsx';
 import { X } from 'lucide-react';
+import { io } from 'socket.io-client';
 import { AdminUser, Resident, ServiceRequest, RequestStatus, LetterType, RTConfig, DashboardInfo } from './types.ts';
 import { APP_NAME, APP_LOGO_URL } from './constants.tsx';
+
+const socket = io(window.location.origin);
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'warga' | 'surat' | 'admin' | 'audit' | 'login'>('dashboard');
@@ -23,28 +26,11 @@ const App: React.FC = () => {
   const [editingResident, setEditingResident] = useState<Resident | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  const [residents, setResidents] = useState<Resident[]>(() => {
-    const saved = localStorage.getItem('smartwarga_residents');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [requests, setRequests] = useState<ServiceRequest[]>(() => {
-    const saved = localStorage.getItem('smartwarga_requests');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [auditLogs, setAuditLogs] = useState<any[]>(() => {
-    const saved = localStorage.getItem('smartwarga_logs');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [admins, setAdmins] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem('smartwarga_admins');
-    return saved ? JSON.parse(saved) : [
-      { id: '1', username: 'admin', password: '', name: 'Default Admin', role: 'Super Admin' }
-    ];
-  });
-  
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const isRemoteUpdate = React.useRef(false);
 
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: any) => {
@@ -73,56 +59,72 @@ const App: React.FC = () => {
     sessionStorage.setItem('smartwarga_install_prompt_seen', 'true');
   };
 
-  const [rtConfig, setRtConfig] = useState<RTConfig>(() => {
-    const saved = localStorage.getItem('smartwarga_rt_config');
-    const defaultConfig = {
-      rtName: 'Pak RT Budiman',
-      rtWhatsapp: '628123456789',
-      rtEmail: 'rt03@smartwarga.id',
-      appName: APP_NAME,
-      appLogo: APP_LOGO_URL,
-      googleSheetUrl: 'https://docs.google.com/spreadsheets/d/1BBRPWrpR4Lf8hTRiZ2uPuGnrHPn4A0OwKupRkMCzIik/edit?usp=sharing',
-      committeeMembers: [
-        { id: '1', name: 'Pak RT Budiman', position: 'Ketua RT', whatsapp: '628123456789' }
-      ]
-    };
-    return saved ? JSON.parse(saved) : defaultConfig;
+  const [residents, setResidents] = useState<Resident[]>([]);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [rtConfig, setRtConfig] = useState<RTConfig>({
+    rtName: 'Pak RT Budiman',
+    rtWhatsapp: '628123456789',
+    rtEmail: 'rt03@smartwarga.id',
+    appName: APP_NAME,
+    appLogo: APP_LOGO_URL,
+    googleSheetUrl: 'https://docs.google.com/spreadsheets/d/1BBRPWrpR4Lf8hTRiZ2uPuGnrHPn4A0OwKupRkMCzIik/edit?usp=sharing',
+    committeeMembers: [{ id: '1', name: 'Pak RT Budiman', position: 'Ketua RT', whatsapp: '628123456789' }]
+  });
+  const [dashboardInfo, setDashboardInfo] = useState<DashboardInfo>({
+    dashboardTitle: 'SmartWarga Dashboard',
+    dashboardSubtitle: 'Selamat datang di sistem layanan digital RT. 03.',
+    govItems: [],
+    activityItems: [],
+    patrolItems: []
   });
 
-  const [dashboardInfo, setDashboardInfo] = useState<DashboardInfo>(() => {
-    const saved = localStorage.getItem('smartwarga_dashboard_info');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Migration: if old format, convert to new format
-      if (parsed.govInfo) {
-        return {
-          dashboardTitle: parsed.dashboardTitle || 'SmartWarga Dashboard',
-          dashboardSubtitle: parsed.dashboardSubtitle || 'Selamat datang di sistem layanan digital RT. 03.',
-          govItems: [{ id: '1', title: 'Info Pemerintah', content: parsed.govInfo, url: parsed.govUrl }],
-          activityItems: [{ id: '1', title: 'Kegiatan Warga', content: parsed.activityInfo, url: parsed.activityUrl }],
-          patrolItems: [{ id: '1', title: 'Jadwal Ronda', content: parsed.patrolSchedule, url: parsed.patrolUrl }],
-        };
+  // Sync Helper
+  const syncState = useCallback((key: string, value: any) => {
+    socket.emit('sync:state', { key, value });
+  }, []);
+
+  // Initial Fetch & Socket Listeners
+  useEffect(() => {
+    const fetchInitialState = async () => {
+      try {
+        const res = await fetch('/api/state');
+        const data = await res.json();
+        if (data.residents) setResidents(data.residents);
+        if (data.requests) setRequests(data.requests);
+        if (data.auditLogs) setAuditLogs(data.auditLogs);
+        if (data.admins) setAdmins(data.admins);
+        if (data.rtConfig) setRtConfig(data.rtConfig);
+        if (data.dashboardInfo) setDashboardInfo(data.dashboardInfo);
+      } catch (e) {
+        console.error("Failed to fetch initial state:", e);
+      } finally {
+        setIsInitialLoading(false);
       }
-      return parsed;
-    }
-    return {
-      dashboardTitle: 'SmartWarga Dashboard',
-      dashboardSubtitle: 'Selamat datang di sistem layanan digital RT. 03.',
-      govItems: [
-        { id: '1', title: 'Vaksinasi Booster', content: 'Pemerintah sedang menjalankan program vaksinasi booster gratis di Puskesmas terdekat. Harap membawa KTP.', url: 'https://www.kemkes.go.id' }
-      ],
-      activityItems: [
-        { id: '1', title: 'Kerja Bakti', content: 'Kegiatan kerja bakti rutin akan dilaksanakan pada hari Minggu besok pukul 07.00 WIB. Mohon partisipasinya.', url: 'https://picsum.photos/800/600' }
-      ],
-      patrolItems: [
-        { id: 'p1', title: 'Senin', content: 'Bpk. Andi & Bpk. Budi', date: 'Malam Selasa' },
-        { id: 'p2', title: 'Selasa', content: 'Bpk. Candra & Bpk. Dedi', date: 'Malam Rabu' },
-        { id: 'p3', title: 'Rabu', content: 'Bpk. Eko & Bpk. Fajar', date: 'Malam Kamis' },
-        { id: 'p4', title: 'Kamis', content: 'Bpk. Gani & Bpk. Hadi', date: 'Malam Jumat' },
-        { id: 'p5', title: 'Jumat', content: 'Bpk. Indra & Bpk. Joko', date: 'Malam Sabtu' },
-      ]
     };
-  });
+
+    fetchInitialState();
+
+    socket.on('state:updated', (data: { key: string, value: any }) => {
+      const { key, value } = data;
+      isRemoteUpdate.current = true;
+      switch (key) {
+        case 'residents': setResidents(value); break;
+        case 'requests': setRequests(value); break;
+        case 'auditLogs': setAuditLogs(value); break;
+        case 'admins': setAdmins(value); break;
+        case 'rtConfig': setRtConfig(value); break;
+        case 'dashboardInfo': setDashboardInfo(value); break;
+      }
+      // Reset after state update is processed
+      setTimeout(() => { isRemoteUpdate.current = false; }, 0);
+    });
+
+    return () => {
+      socket.off('state:updated');
+    };
+  }, []);
 
   const handleLogout = () => {
     setCurrentUser(null); 
@@ -173,27 +175,33 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem('smartwarga_admins', JSON.stringify(admins));
-  }, [admins]);
+    if (!isRemoteUpdate.current) syncState('admins', admins);
+  }, [admins, syncState]);
 
   useEffect(() => {
     localStorage.setItem('smartwarga_rt_config', JSON.stringify(rtConfig));
-  }, [rtConfig]);
+    if (!isRemoteUpdate.current) syncState('rtConfig', rtConfig);
+  }, [rtConfig, syncState]);
 
   useEffect(() => {
     localStorage.setItem('smartwarga_dashboard_info', JSON.stringify(dashboardInfo));
-  }, [dashboardInfo]);
+    if (!isRemoteUpdate.current) syncState('dashboardInfo', dashboardInfo);
+  }, [dashboardInfo, syncState]);
 
   useEffect(() => {
     localStorage.setItem('smartwarga_residents', JSON.stringify(residents));
-  }, [residents]);
+    if (!isRemoteUpdate.current) syncState('residents', residents);
+  }, [residents, syncState]);
 
   useEffect(() => {
     localStorage.setItem('smartwarga_requests', JSON.stringify(requests));
-  }, [requests]);
+    if (!isRemoteUpdate.current) syncState('requests', requests);
+  }, [requests, syncState]);
 
   useEffect(() => {
     localStorage.setItem('smartwarga_logs', JSON.stringify(auditLogs));
-  }, [auditLogs]);
+    if (!isRemoteUpdate.current) syncState('auditLogs', auditLogs);
+  }, [auditLogs, syncState]);
 
   const addLog = (action: string, target: string, type: string) => {
     const newLog = {
@@ -245,6 +253,17 @@ const App: React.FC = () => {
     // Trigger auto-sync
     autoSyncToGoogleSheets(updatedResidents);
   };
+
+  if (isInitialLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500 font-medium animate-pulse">Menghubungkan ke Server...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-['Plus_Jakarta_Sans']">

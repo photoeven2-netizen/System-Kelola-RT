@@ -5,6 +5,9 @@ import { google } from "googleapis";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import fs from "fs";
 
 dotenv.config();
 
@@ -12,9 +15,73 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 const PORT = 3000;
 
 app.use(express.json({ limit: '50mb' }));
+
+// Data Persistence
+const DATA_FILE = path.join(__dirname, "smartwarga_data.json");
+
+const loadData = () => {
+  if (fs.existsSync(DATA_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(DATA_FILE, "utf-8"));
+    } catch (e) {
+      console.error("Error loading data:", e);
+      return {};
+    }
+  }
+  return {};
+};
+
+const saveData = (data: any) => {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error("Error saving data:", e);
+  }
+};
+
+let appState = loadData();
+
+// Initialize default state if empty
+if (!appState.residents) appState.residents = [];
+if (!appState.requests) appState.requests = [];
+if (!appState.admins) appState.admins = [
+  { id: '1', username: 'admin', password: '', name: 'Default Admin', role: 'Super Admin' }
+];
+if (!appState.rtConfig) appState.rtConfig = null;
+if (!appState.dashboardInfo) appState.dashboardInfo = null;
+if (!appState.auditLogs) appState.auditLogs = [];
+
+// API Routes for Initial State
+app.get("/api/state", (req, res) => {
+  res.json(appState);
+});
+
+// Socket.io Logic
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+
+  socket.on("sync:state", (data) => {
+    const { key, value } = data;
+    appState[key] = value;
+    saveData(appState);
+    // Broadcast to all other clients
+    socket.broadcast.emit("state:updated", { key, value });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
+});
 
 const getRedirectUri = (provider: 'google' | 'github') => {
   // Use APP_URL if provided, otherwise fallback to localhost
@@ -252,7 +319,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  httpServer.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://0.0.0.0:${PORT}`);
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
